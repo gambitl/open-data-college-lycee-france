@@ -412,7 +412,7 @@ Repowise n'est pas utilisé dans ce dépôt (voir « Code mapping »), donc ni s
 
 ### Ce que vous devez savoir sur ce qui a été construit
 
-*Conseiller CTO, après la construction, 11 octobre 2026. Ce bloc remplace la note provisoire que l'exécuteur avait écrite en attendant. Une phrase de cette note était fausse, et elle est corrigée au point 1.*
+*Conseiller CTO, après la construction, 11 octobre 2026. Ce bloc remplace la note provisoire que l'exécuteur avait écrite en attendant. Une phrase de cette note était fausse, et elle est corrigée au point 1. Un second passage du conseiller, le même jour, a précisé le point 1 (la méthode de fusion de la #1) et remplacé l'ancien point 4 sur la version de uv, déplacé dans « À savoir aussi », par un point vérifié sur le tri des imports.*
 
 Le socle marche en local. Les trois commandes de vérification passent, et `uv run python -m pipeline` se termine sans erreur. La CI a déjà prouvé qu'elle passe au rouge sur un test faux. En revanche, elle n'a encore jamais tourné sur la vraie branche du ticket, parce que rien n'est poussé avant la phase 12.
 
@@ -428,7 +428,7 @@ Le code lui-même est petit et sain. Les risques sont presque tous autour du cod
 
 **Ce qui se passe si rien n'est décidé.** La #1 reste ouverte, la pull request de ce ticket s'ouvre en phase 12, et GitHub l'affiche « non fusionnable » dès que la #1 est fusionnée.
 
-**Ma recommandation.** Fusionnez la #1 aujourd'hui, vous-même. Ensuite, l'agent fait `git fetch` puis `git rebase origin/main` sur cette branche avant de la pousser en phase 12. Comme rien n'a encore été poussé, ce rebase ne gêne personne. La solution inverse marche aussi : fermer la #1 sans la fusionner, et fusionner ce ticket avant demain matin. Mais elle dépend de la vitesse de la phase 12, alors que la première ne dépend que de vous. Dans les deux cas, la phrase du corps de la pull request doit dire « si la #1 est fusionnée d'abord, rebaser cette branche ».
+**Ma recommandation.** Fusionnez la #1 aujourd'hui, vous-même, avec le bouton « Create a merge commit » de GitHub, et surtout pas avec « Squash and merge ». J'ai simulé les deux cas. Avec une fusion classique, le rebase de cette branche saute les deux copies et passe proprement. Avec un squash, les deux commits de la #1 deviennent un seul commit différent, git ne reconnaît plus les copies, et le rebase s'arrête sur un conflit dans `CLAUDE.md`. Faites donc cette fusion avant de limiter le dépôt au squash (point 3). Ensuite, l'agent fait `git fetch` puis `git rebase origin/main` sur cette branche avant de la pousser en phase 12. Comme rien n'a encore été poussé, ce rebase ne gêne personne. La solution inverse marche aussi : fermer la #1 sans la fusionner, et fusionner ce ticket avant demain matin. Mais elle dépend de la vitesse de la phase 12, alors que la première ne dépend que de vous. Dans les deux cas, la phrase du corps de la pull request doit dire « si la #1 est fusionnée d'abord, rebaser cette branche ».
 
 #### 2. La protection de `main` doit-elle aussi s'appliquer aux agents, qui travaillent avec votre compte administrateur ?
 
@@ -452,19 +452,19 @@ Le code lui-même est petit et sain. Les risques sont presque tous autour du cod
 
 **Ce qui se passe si rien n'est décidé.** Chaque agent choisit sa méthode, et l'historique de `main` mélange les trois styles.
 
-**Ma recommandation.** N'autorisez que le squash, et activez la suppression automatique des branches après la fusion. Ce sont deux cases à cocher dans les réglages du dépôt, ou une commande `gh api` que l'agent peut lancer en phase 12. Le squash a un autre avantage : chaque ticket devient un seul commit sur `main`, facile à annuler. Le point 1 reste valable avec le squash : il faut quand même rebaser cette branche avant la fusion.
+**Ma recommandation.** N'autorisez que le squash, et activez la suppression automatique des branches après la fusion. Ce sont deux cases à cocher dans les réglages du dépôt, ou une commande `gh api` que l'agent peut lancer en phase 12. Le squash a un autre avantage : chaque ticket devient un seul commit sur `main`, facile à annuler. Attention à l'ordre : la #1 doit être fusionnée par une fusion classique avant ce changement de réglage, comme l'explique le point 1. Ensuite, la pull request de ce ticket peut être fusionnée en squash sans problème, une fois la branche rebasée.
 
-#### 4. Faut-il obliger tous les agents à utiliser la même version de uv que la CI ?
+#### 4. Faut-il empêcher ruff de regrouper les imports des collectes sur une seule ligne ?
 
-**De quoi il s'agit.** uv est l'outil qui installe Python et les bibliothèques. Il écrit le fichier de verrouillage `uv.lock`, qui fixe la version exacte de chaque bibliothèque. La CI utilise exactement uv 0.8.5. En local, `pyproject.toml` accepte n'importe quelle version égale ou plus récente (`required-version = ">=0.8.5"`).
+**De quoi il s'agit.** Ruff trie automatiquement les lignes `import` en haut de chaque fichier : c'est la règle `I`, choisie à la question 3. Par défaut, il fait plus que trier. Quand deux lignes importent depuis le même paquet, il les fusionne en une seule ligne. Ainsi, `from pipeline.collecte import alpha` et `from pipeline.collecte import beta` deviennent `from pipeline.collecte import alpha, beta`. Je l'ai vérifié avec la version de ruff fixée dans `uv.lock` (0.17.0).
 
-**Pourquoi c'est important ici.** Un agent qui a une version plus récente de uv peut réécrire `uv.lock` un peu différemment quand il ajoute une dépendance. La CI, restée en 0.8.5, lance `uv sync --locked`. Elle peut alors juger le fichier « pas à jour », ou même refuser de le lire s'il utilise un format plus récent. Je ne peux pas promettre que cela arrivera. uv change souvent, et c'est le genre de panne qu'un spécialiste de uv surveille.
+**Pourquoi c'est important ici.** La liste `ETAPES` a été écrite pour que chaque collecte ajoute sa propre ligne, à sa place alphabétique, afin d'éviter les conflits entre tickets parallèles (question 5). Mais chaque collecte doit aussi importer son module en haut de `pipeline/__main__.py`. À cause de ce regroupement, les quinze tickets de collecte modifieront tous la même ligne d'import. Deux tickets faits en parallèle entreront donc forcément en conflit, quel que soit l'ordre alphabétique.
 
-**Ce qui se passe si on l'ignore.** Une CI rouge, avec un message qui parle du fichier de verrouillage alors que le code est correct. L'agent risque alors de « réparer » en régénérant `uv.lock`, ce qui peut changer d'autres versions de bibliothèques sans raison.
+**Ce qui se passe si on l'ignore.** Pendant la vague 3, presque chaque fusion d'une collecte bloque sur un conflit dans `pipeline/__main__.py`. L'agent doit alors rebaser, résoudre le conflit et relancer la CI. Ce n'est pas une perte silencieuse : si un agent efface par erreur l'import d'un autre, ruff signale un nom inconnu, et le test des collectes signale le module absent de `ETAPES`. Le coût, c'est du temps perdu et des agents bloqués, pas des données fausses.
 
-**Ce qui se passe si rien n'est décidé.** Ça marche tant que tout le monde reste en uv 0.8.x. Le jour où un agent est en 0.9, le premier ticket qui ajoute une dépendance risque de tomber dessus.
+**Ce qui se passe si rien n'est décidé.** La règle « une ligne par collecte » ne protège que la moitié du fichier.
 
-**Ma recommandation.** Mettez `required-version = ">=0.8.5,<0.9"` dans `pyproject.toml`. Un agent avec une version trop récente reçoit alors tout de suite un message clair en local, au lieu d'une CI rouge et obscure. Le jour où l'on veut passer à uv 0.9, un seul ticket change à la fois cette ligne et la version fixée dans `ci.yml`. C'est une ligne à modifier, sans risque.
+**Ma recommandation.** Ajoutez deux lignes dans `pyproject.toml` : `[tool.ruff.lint.isort]`, puis `force-single-line = true`. Ruff garde alors un import par ligne, triés par ordre alphabétique, exactement comme `ETAPES`. Je l'ai vérifié sur un fichier d'essai. Aujourd'hui, ce réglage ne change qu'une seule ligne de code, dans `tests/test_socle.py`, et `uv run ruff check --fix` la corrige tout seul. Plus tard, il faudrait reformater tous les fichiers déjà écrits. Le bon moment est donc maintenant, dans ce ticket, avant la phase 12.
 
 #### 5. Que fait un ticket de collecte qui a besoin d'un module d'aide partagé ?
 
@@ -498,6 +498,8 @@ Le code lui-même est petit et sain. Les risques sont presque tous autour du cod
 
 ### À savoir aussi
 
+- La CI utilise exactement uv 0.8.5, mais `pyproject.toml` accepte en local toute version plus récente (`required-version = ">=0.8.5"`). Un agent avec un uv plus récent pourrait écrire un `uv.lock` que la CI juge « pas à jour ». Écrire `">=0.8.5,<0.9"` donnerait un message clair en local plutôt qu'une CI rouge et obscure.
+- Plusieurs tickets qui ajoutent des dépendances en parallèle auront des conflits sur `uv.lock`. L'ADR dit « on le résout en relançant `uv lock` », ce qui reste vague. La bonne recette est de reprendre le `uv.lock` de `main`, puis de relancer `uv lock`. Il ne faut jamais supprimer `uv.lock` pour le régénérer : toutes les bibliothèques, dont ruff et DuckDB, sauteraient à leur dernière version sans que personne l'ait décidé. Cette recette mérite une ligne dans `CLAUDE.md`.
 - Mettre à jour DuckDB (par `uv lock --upgrade`) peut changer les octets des tables publiées, par exemple la façon d'écrire les nombres. Une mise à jour de DuckDB doit donc être traitée comme un changement de données, dans son propre ticket.
 - Les actions GitHub sont figées par hash et ne se mettent jamais à jour toutes seules. GitHub retire de temps en temps d'anciennes versions de Node.js, et une action figée trop vieille finit par afficher des avertissements, puis par casser. Activer Dependabot pour les actions règle le problème.
 - La règle « fins de ligne Unix » n'est écrite que dans `CLAUDE.md`. Un fichier `.gitattributes` avec `* text=auto eol=lf` la ferait appliquer par git. Ce n'est pas urgent tant que tout le monde travaille sur Mac ou sur Linux.
@@ -513,8 +515,8 @@ Le code lui-même est petit et sain. Les risques sont presque tous autour du cod
 - Cas limites pour l'utilisateur : pas d'écran, angle sauté.
 - Exploitation et coût : dépôt public, minutes de CI gratuites. Seule la maintenance des actions figées compte (« À savoir aussi »).
 - Réversibilité : point 3.
-- Couplages cachés : points 1 (deux versions de `CLAUDE.md`) et 5 (le test des collectes).
-- Angles ajoutés pour cette technologie : les fusions git et le cherry-pick (point 1), les rulesets de GitHub (point 2), les méthodes de fusion de GitHub (point 3), les versions de uv et de son fichier de verrouillage (point 4), les conventions de nommage et d'import en Python (point 5), les versions de DuckDB (« À savoir aussi »).
+- Couplages cachés : points 1 (deux versions de `CLAUDE.md`), 4 (la ligne d'import partagée par toutes les collectes) et 5 (le test des collectes).
+- Angles ajoutés pour cette technologie : les fusions git et le cherry-pick (point 1), les rulesets de GitHub (point 2), les méthodes de fusion de GitHub (points 1 et 3), le tri des imports de ruff (point 4), les conventions de nommage et d'import en Python (point 5), les versions de uv, de son fichier de verrouillage et de DuckDB (« À savoir aussi »).
 
 ## Pull request
 
