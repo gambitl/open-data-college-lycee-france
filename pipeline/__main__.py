@@ -11,6 +11,10 @@ ETAPES: list[Callable[[], None]] = [
     #     autre_source.executer,
     #     ma_source.executer,
     # Part 2: assembly steps, in the order of their dependencies.
+    #
+    # A helper module shared by several collections is named with a leading
+    # underscore (for example _commun.py). It has no executer() and does not
+    # belong in this list. A collection module must do nothing when imported.
 ]
 
 

@@ -18,7 +18,7 @@ requires = ["uv_build>=0.8.5,<0.9"]
 build-backend = "uv_build"
 
 [tool.uv]
-required-version = ">=0.8.5"
+required-version = ">=0.8.5,<0.9"
 
 [tool.uv.build-backend]
 module-root = ""
@@ -36,3 +36,6 @@ target-version = "py312"
 
 [tool.ruff.lint]
 extend-select = ["I", "B", "UP"]
+
+[tool.ruff.lint.isort]
+force-single-line = true

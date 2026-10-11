@@ -4,13 +4,15 @@ import importlib
 import pkgutil
 import subprocess
 import sys
+from types import SimpleNamespace
 
 import duckdb
 import pytest
 
 import pipeline
 import pipeline.collecte
-from pipeline.__main__ import ETAPES, lancer
+from pipeline.__main__ import ETAPES
+from pipeline.__main__ import lancer
 
 
 def test_importe_pipeline_et_interroge_duckdb():
@@ -63,12 +65,41 @@ def test_la_premiere_erreur_arrete_la_chaine():
     assert passages == []
 
 
-def test_chaque_module_de_collecte_est_dans_etapes():
+def modules_absents(noms, importer, etapes):
+    """Return the collection modules whose executer is missing from etapes."""
     manquants = []
-    for info_module in pkgutil.iter_modules(pipeline.collecte.__path__):
-        module = importlib.import_module(f"pipeline.collecte.{info_module.name}")
-        if not hasattr(module, "executer") or module.executer not in ETAPES:
-            manquants.append(info_module.name)
+    for nom in noms:
+        if nom.startswith("_"):
+            continue  # Helper modules are not steps.
+        module = importer(nom)
+        if not hasattr(module, "executer") or module.executer not in etapes:
+            manquants.append(nom)
+    return manquants
+
+
+def test_un_module_d_aide_n_a_pas_besoin_d_etre_dans_etapes():
+    def executer_annuaire():
+        pass
+
+    modules = {
+        "_commun": SimpleNamespace(),
+        "annuaire": SimpleNamespace(executer=executer_annuaire),
+    }
+    assert modules_absents(modules, modules.get, [executer_annuaire]) == []
+
+
+def test_un_module_de_collecte_absent_de_etapes_est_signale():
+    modules = {"annuaire": SimpleNamespace(executer=lambda: None)}
+    assert modules_absents(modules, modules.get, []) == ["annuaire"]
+
+
+def test_chaque_module_de_collecte_est_dans_etapes():
+    noms = [info.name for info in pkgutil.iter_modules(pipeline.collecte.__path__)]
+    manquants = modules_absents(
+        noms,
+        lambda nom: importlib.import_module(f"pipeline.collecte.{nom}"),
+        ETAPES,
+    )
     assert not manquants, (
         "Ces modules de pipeline/collecte/ n'ont pas leur fonction executer "
         f"dans ETAPES (pipeline/__main__.py) : {', '.join(manquants)}"
