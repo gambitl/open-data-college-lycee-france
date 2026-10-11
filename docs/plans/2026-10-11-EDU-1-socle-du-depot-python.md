@@ -6,7 +6,7 @@ Tracker: Linear (équipe « Open Data Education », clé `EDU`), par le serveur 
 Documentation tool: Notion pour les specs (page « Open Data Collèges & Lycées »), ADRs in `docs/adr/` dans le dépôt
 Branch: `emdash/edu-1-p1-j1-1-uet1x` (voir « Choix par défaut » plus bas ; Linear propose `victordistefano2/edu-1-p1-j1-1-socle-du-depot-python-uv-pytest-ruff-integration`)
 Conventions file: `CLAUDE.md` à la racine du dépôt. Il n'est pas encore sur `main` : voir la question 1 et l'étape préalable plus bas.
-Status: approved
+Status: ready for review
 
 **Règle de langue de ce fichier et de tout le ticket** (décision de l'utilisateur, question 2) : tout est écrit en français, sauf les commentaires et les docstrings dans le code, qui sont en anglais. Les titres de section de ce fichier (`## Implementation units`, `## Review log`, `## Executor notes`, etc.) et les valeurs de la ligne `Status:` restent en anglais, parce que les agents de la compétence resolve-issue les cherchent sous ces noms exacts. Le texte sous ces titres est en français.
 
@@ -397,12 +397,64 @@ Il vérifie ensuite que la pull request de ce ticket reste fusionnable, puis ajo
 
 ## Review log
 
+Repowise n'est pas utilisé dans ce dépôt (voir « Code mapping »), donc ni score de risque ni bloc de directives.
+
+- Relecteur de conventions : aucun problème. Remarque basse : `module_info` renommé `info_module` (corrigé).
+- Relecteur de sécurité : aucun problème. Les hashes des actions ont été vérifiés avec `git ls-remote`. Suggestion pour plus tard : ajouter `.env` à `.gitignore` quand un ticket utilisera un secret.
+- Relecteur de simplicité : le test `python -m pipeline` en sous-processus lancerait les vraies étapes (réseau) dès la première collecte. Corrigé : le test appelle `lancer([])` ; une assertion inutile a été retirée.
+- Relecteur de justesse : aucun problème. Même remarque sur le sous-processus (déjà corrigée), plus un doute sur la couverture du bloc `__main__`.
+- Relecteur indépendant : n'a changé aucun code. Il a signalé qu'aucun test ne lance `python -m pipeline`. Corrigé : un test en sous-processus, sauté quand `ETAPES` n'est pas vide. Il a aussi signalé l'unité 6 encore marquée « todo » (corrigé) et l'ADR absente (ajoutée ensuite).
+- Jugements à mettre dans la pull request : `lancer` affiche `etape.__module__` et `etape.__name__`, ce qui ne marche que pour des fonctions simples (pas `functools.partial`) ; le test des modules de collecte refuse aussi un futur module d'aide.
+- Suivis : dossier d'aide dans `pipeline/collecte/` ; `.env` dans `.gitignore` ; Dependabot (voir « À savoir aussi »).
+- Branche à jour : `origin/main` n'a pas bougé (5d7b4c3), pas de rebase.
+
 ## Briefing
+
+### Ce que vous devez savoir sur ce qui a été construit
+
+Le dépôt est maintenant un projet Python qui marche : `uv run pytest`, `uv run ruff check` et `uv run ruff format --check` passent, et `uv run python -m pipeline` se termine sans erreur avec la liste d'étapes vide. Le workflow `ci.yml` n'a jamais encore tourné sur la vraie branche du ticket ; la seule preuve réelle est l'exécution volontairement rouge de la branche temporaire.
+
+Trois points à garder en tête. Premièrement, le nom du job `verifications` est un contrat : le ruleset de `main` (créé en phase 12) l'exige, et tout ticket qui le renomme bloque toutes les pull requests. Deuxièmement, la liste `ETAPES` suppose que les collectes ne dépendent pas les unes des autres ; si une collecte dépend d'une autre, il faudra revoir cette règle. Troisièmement, le test `test_chaque_module_de_collecte_est_dans_etapes` échoue pour tout module placé dans `pipeline/collecte/`, même un module d'aide ; si une collecte a besoin d'un module commun, il faudra lui donner un autre dossier ou ignorer les noms qui commencent par `_`.
+
+Ce qui reste à faire par d'autres. La pull request #1 (`CLAUDE.md`) n'est pas fusionnée : `CLAUDE.md` est arrivé ici par cherry-pick, donc si elle est fusionnée avant celle-ci, git ignorera les deux commits copiés ; sinon, les deux pull requests touchent le même fichier. EDU-8 doit choisir entre l'heure UTC et l'heure de Paris pour la date des copies. Les deux premières exécutions de la chaîne ne couvrent pas `if __name__ == "__main__"` si la liste `ETAPES` n'est plus vide : le test du sous-processus est alors sauté.
+
+Note : le conseiller CTO lancé pour cette section n'a pas répondu ; cette note a été écrite par l'exécuteur à partir du diff et des relectures.
 
 ## Pull request
 
+Titre : `feat: créer le socle du dépôt Python (uv, pytest, ruff, intégration continue)`
+
+Corps :
+
+Cette pull request construit le socle vide du dépôt Python, dans lequel les autres tickets vont écrire. Elle ajoute le projet géré par uv (Python 3.12, `duckdb`, `pytest`, `ruff`), le paquet `pipeline` avec sa liste `ETAPES` et son lanceur, l'arborescence de `data/` et de `docs/`, et le workflow GitHub `ci.yml` avec un seul job, `verifications`, en lecture seule.
+
+Décisions principales. Ruff vérifie aussi le tri des imports, les erreurs courantes et la syntaxe moderne, ainsi que le format. Les tests n'utilisent pas le réseau (marqueur `reseau`). Un test refuse tout fichier suivi de plus de 10 Mo, et un autre refuse un module de collecte absent de `ETAPES`. Les noms dans le code sont en français sans accents, les commentaires en anglais. Les raisons sont dans `docs/adr/ADR-INFRA-A-socle-du-depot.md`. `CLAUDE.md` est complété (arborescence, commandes, règles de données).
+
+Fichiers : `pyproject.toml`, `uv.lock`, `.python-version`, `.gitignore`, `pipeline/`, `tests/`, `data/*/README.md`, `docs/adr/`, `.github/workflows/ci.yml`, `CLAUDE.md`, et le plan `docs/plans/2026-10-11-EDU-1-socle-du-depot-python.md`.
+
+Preuve que la CI échoue sur un test faux : https://github.com/gambitl/open-data-college-lycee-france/actions/runs/38143740774 (branche temporaire, supprimée).
+
+Cette pull request contient deux commits copiés de la pull request #1 (`CLAUDE.md`), qui n'était pas fusionnée. Si la #1 est fusionnée d'abord, git les ignorera à la fusion.
+
+Jugements : `lancer` ne gère que des fonctions simples ; un module d'aide dans `pipeline/collecte/` ferait échouer le test des étapes. Suivis : ajouter `.env` à `.gitignore` quand un secret apparaîtra ; Dependabot.
+
+Fixes EDU-1
+
 ## Documentation
 
+- Commentaire Linear sur EDU-1, EDU-7, EDU-8 et EDU-9 (écrits le 11 octobre 2026).
+- ADR : `docs/adr/ADR-INFRA-A-socle-du-depot.md` (commitée). Le lien de la pull request y sera ajouté en phase 12.
+- `CLAUDE.md` : mis à jour (unité 6).
+- Notion : section 7 de la spec du projet 1, phrase ajoutée sur le socle d'EDU-1 (https://app.notion.com/p/3f665f22166b8158bc46f59fd823f825).
+
 ## Executor notes
+
+- Le serveur MCP de GitHub n'a pas été utilisé ; `gh` a suffi.
+- La PR #1 n'étant pas fusionnée, la solution de secours (cherry-pick de `1e69881` et `cc598ec`) a été appliquée.
+- Unité 5 : mon premier test faux (`assert 1 == 2`) a échoué sur `ruff check` (règle PLR0133), pas sur pytest ; relancé avec `len("abc") == 4`. Le plan aurait dû proposer une assertion que ruff accepte.
+- Le plan de l'unité 2 demandait un sous-processus pour `python -m pipeline` ; deux relecteurs ont montré qu'il lancerait les vraies étapes plus tard. Remplacé par `lancer([])`, puis un test en sous-processus sauté si `ETAPES` n'est pas vide.
+- Les unités ont été faites directement par l'exécuteur, sans implémenteur à part, car elles sont petites et séquentielles.
+- Les sous-agents (quatre relecteurs, relecteur indépendant, conseiller CTO) ont plusieurs fois fini sans rendre leur rapport avant d'être relancés par un message ; le conseiller CTO n'a jamais répondu, j'ai écrit le briefing moi-même.
+- Étape de revue repowise sautée, comme le dit le plan.
 
 ## Hand-off log
