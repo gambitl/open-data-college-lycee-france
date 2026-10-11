@@ -6,7 +6,7 @@ Tracker: Linear (équipe « Open Data Education », clé `EDU`), par le serveur 
 Documentation tool: Notion pour les specs (page « Open Data Collèges & Lycées »), ADRs in `docs/adr/` dans le dépôt
 Branch: `emdash/edu-1-p1-j1-1-uet1x` (voir « Choix par défaut » plus bas ; Linear propose `victordistefano2/edu-1-p1-j1-1-socle-du-depot-python-uv-pytest-ruff-integration`)
 Conventions file: `CLAUDE.md` à la racine du dépôt. Il n'est pas encore sur `main` : voir la question 1 et l'étape préalable plus bas.
-Status: ready for review
+Status: in progress
 
 **Règle de langue de ce fichier et de tout le ticket** (décision de l'utilisateur, question 2) : tout est écrit en français, sauf les commentaires et les docstrings dans le code, qui sont en anglais. Les titres de section de ce fichier (`## Implementation units`, `## Review log`, `## Executor notes`, etc.) et les valeurs de la ligne `Status:` restent en anglais, parce que les agents de la compétence resolve-issue les cherchent sous ces noms exacts. Le texte sous ces titres est en français.
 
@@ -358,6 +358,36 @@ Si cette pull request n'est pas fusionnée quand l'exécuteur démarre, l'exécu
 - Commit message: `docs: compléter CLAUDE.md avec l'arborescence, les commandes et les règles communes`
 - Depends on: unités 1 à 4 (les commandes doivent exister).
 
+### Unit 7: Imports sur une ligne, modules d'aide de collecte et version de uv — status: todo
+- Ajoutée le 11 octobre 2026, après le briefing du conseiller CTO (points 4 et 5), sur décision de l'utilisateur (voir « Decisions »).
+- Failing test: dans `tests/test_socle.py`, sortir la logique du test `test_chaque_module_de_collecte_est_dans_etapes` dans une petite fonction de test qui reçoit une liste de noms de modules et la liste des étapes, et qui renvoie les modules absents. Écrire d'abord un test qui lui donne `["_commun", "annuaire"]` avec une liste d'étapes qui ne contient que `annuaire.executer` (une fausse fonction suffit), et qui attend une liste vide. Il échoue tant que les noms qui commencent par un tiret bas ne sont pas ignorés. Un second test vérifie qu'un module sans tiret bas absent des étapes est toujours signalé.
+- Minimum code:
+  - Le test des modules de collecte ignore les modules dont le nom commence par `_`.
+  - `pyproject.toml` : ajouter `[tool.ruff.lint.isort]` avec `force-single-line = true`, puis lancer `uv run ruff check --fix` (cela change une ligne d'import dans `tests/test_socle.py`). Vérifier une fois à la main que `ruff check` refuse deux noms importés sur la même ligne.
+  - `pyproject.toml` : `[tool.uv] required-version = ">=0.8.5,<0.9"`. Vérifier que `uv sync --locked` passe toujours.
+  - Le commentaire au-dessus de `ETAPES` (en anglais) dit aussi qu'un module d'aide partagé se nomme avec un tiret bas devant, comme `_commun.py`, et qu'il n'entre pas dans `ETAPES`.
+- Refactor: aucun.
+- Commit message: `test: ignorer les modules d'aide de collecte et garder un import par ligne`
+- Depends on: unités 1 à 6.
+
+### Unit 8: Nouvelles règles dans `CLAUDE.md` — status: todo
+- Ajoutée le 11 octobre 2026, avec l'unité 7.
+- Failing test: aucun, c'est de la documentation. Vérifier que chaque commande écrite marche telle quelle.
+- Minimum code: ajouter dans `CLAUDE.md`, en français et dans son style :
+  - **Étapes de la chaîne** : un module d'aide partagé de `pipeline/collecte/` a un nom qui commence par un tiret bas (`_commun.py`) et n'entre pas dans `ETAPES` ; un module de collecte ne fait rien au moment de son import (pas de téléchargement, pas d'écriture), tout se passe dans `executer()`.
+  - **Tests et outils** : ruff garde un import par ligne (réglage `force-single-line`), et `uv run ruff check --fix` le corrige ; la version de uv attendue est la 0.8 (la CI utilise exactement la 0.8.5).
+  - **Fichier de verrouillage** : en cas de conflit sur `uv.lock`, reprendre celui de `main` (`git checkout origin/main -- uv.lock`), puis relancer `uv lock` ; ne jamais supprimer `uv.lock` pour le régénérer, car toutes les bibliothèques sauteraient à leur dernière version.
+  - **Fusions** : `main` est protégé par un ruleset ; on ne pousse jamais directement sur `main` ; on n'utilise jamais `gh pr merge --admin` ; les pull requests sont fusionnées en squash, seule méthode autorisée, et la branche est supprimée après la fusion.
+- Refactor: aucun.
+- Commit message: `docs: ajouter dans CLAUDE.md les règles de fusion, d'import et de uv.lock`
+- Depends on: unité 7.
+
+### Après les unités 7 et 8 : relectures et documentation à refaire
+
+L'exécuteur ne refait pas tout. Il relance les tests et les trois vérifications. Il fait relire seulement le diff des unités 7 et 8 (les commits après `58a8d74`) par un relecteur de conventions et un relecteur de justesse, et note le résultat dans « Review log ». Il ne relance ni le relecteur indépendant ni le conseiller CTO. En phase 10, il ajoute à l'ADR-INFRA-A une section par nouvelle décision (imports sur une ligne, modules d'aide en `_nom.py`, version de uv limitée à 0.8, recette pour `uv.lock`, ruleset en mode « par pull request », fusion en squash seulement), il met à jour le brouillon de la pull request (voir plus bas), et il ajoute une ligne au commentaire Linear d'EDU-1 et à celui d'EDU-8 (la règle des modules d'aide et de l'import sans effet concerne les collectes qui s'appuient sur EDU-8).
+
+Le brouillon de la pull request doit corriger la phrase fausse sur la #1. La bonne version dit : si la #1 est fusionnée avant la publication, la branche est rebasée et ne contient plus ses deux commits ; si elle est encore ouverte au moment de la publication, cette pull request les contient aussi, et il faut soit fermer la #1 sans la fusionner, soit la fusionner d'abord avec « Create a merge commit » puis rebaser cette branche.
+
 ### Sécurité
 
 Pas de surface de sécurité au sens de l'unité de sécurité : pas de point d'entrée réseau, pas de requête SQL construite à partir d'une entrée extérieure, pas d'écriture en base sur plusieurs tables, pas de secret. La seule surface est le workflow GitHub Actions, et son durcissement est dans l'unité 4 : permission `contents: read` seulement, actions figées par hash, `persist-credentials: false`, aucun secret utilisé.
@@ -366,17 +396,26 @@ Pas de surface de sécurité au sens de l'unité de sécurité : pas de point d'
 
 Aucune. Ce projet ne produit pas d'écran.
 
-### Après la publication (phase 12) : ruleset de `main`
+### Après la publication (phase 12) : pull request #1, ruleset de `main` et méthodes de fusion
 
-Quand la pull request de ce ticket a ses vérifications vertes, l'exécuteur crée un ruleset sur `main` avec `gh api repos/gambitl/open-data-college-lycee-france/rulesets` (question 4) :
+**Avant le push.** L'exécuteur fait `git fetch origin` et regarde l'état de la pull request #1 (`gh pr view 1`).
+- Si la #1 a été fusionnée avec un commit de fusion, il rebase cette branche sur `origin/main` : git saute les deux commits copiés, et le reste s'applique proprement. Il relance les tests.
+- Si la #1 a été fusionnée en squash par erreur, le rebase s'arrête sur `CLAUDE.md` au premier commit copié. Les deux commits copiés sont déjà sur `main` sous une autre forme : il les saute avec `git rebase --skip`, puis le reste s'applique. Il relance les tests.
+- Si la #1 est encore ouverte, il pousse la branche telle quelle. Le corps de la pull request l'explique (voir l'unité 8).
 
-- nom « Protection de main », cible la branche par défaut, appliqué (`enforcement: active`) ;
-- règle « pull request » avec zéro approbation exigée, pour que les agents et le propriétaire puissent fusionner seuls ;
-- règle « vérifications requises » avec le contexte `verifications`, et l'option « à jour avant la fusion » désactivée (`strict_required_status_checks_policy: false`) ;
-- règles qui interdisent la suppression de `main` et les push forcés sur `main` ;
-- contournement autorisé pour le rôle administrateur du dépôt (`bypass_mode: always`).
+**Quand la pull request de ce ticket a ses vérifications vertes**, et seulement si la #1 est fusionnée ou fermée, l'exécuteur fait deux réglages avec `gh api` (questions 4 et briefing, points 2 et 3) :
 
-Il vérifie ensuite que la pull request de ce ticket reste fusionnable, puis ajoute le lien du ruleset dans le corps de la pull request (modifié avec `gh pr edit`, sans push) et dans le commentaire Linear d'EDU-1. Si la création échoue, il le dit dans son rapport sans bloquer la publication.
+1. Il crée un ruleset sur `main` (`POST repos/gambitl/open-data-college-lycee-france/rulesets`) :
+   - nom « Protection de main », cible la branche par défaut, appliqué (`enforcement: active`) ;
+   - règle « pull request » avec zéro approbation exigée ;
+   - règle « vérifications requises » avec le contexte `verifications`, et l'option « à jour avant la fusion » désactivée (`strict_required_status_checks_policy: false`) ;
+   - règles qui interdisent la suppression de `main` et les push forcés ;
+   - contournement pour le rôle administrateur du dépôt seulement par pull request (`bypass_mode: pull_request`), jamais « toujours ».
+2. Il limite les méthodes de fusion au squash et active la suppression des branches après fusion (`PATCH repos/gambitl/open-data-college-lycee-france` avec `allow_squash_merge: true`, `allow_merge_commit: false`, `allow_rebase_merge: false`, `delete_branch_on_merge: true`).
+
+Il vérifie ensuite que la pull request de ce ticket reste fusionnable, puis ajoute le lien du ruleset dans le corps de la pull request (avec `gh pr edit`, sans push) et dans le commentaire Linear d'EDU-1.
+
+Si la #1 est encore ouverte à ce moment-là, il ne fait aucun des deux réglages, parce que la #1 doit d'abord être fusionnée avec un commit de fusion. Il le dit dans son rapport, et la conversation principale fera ces réglages après la fusion de la #1. Si un réglage échoue, il le dit dans son rapport sans bloquer la publication.
 
 ## Documentation duties
 
@@ -394,6 +433,9 @@ Il vérifie ensuite que la pull request de ce ticket reste fusionnable, puis ajo
 - 2026-10-11 : questions 1 et 3 à 8, « Ok avec tout le reste ». Les recommandations du conseiller CTO sont retenues telles quelles.
 - 2026-10-11 : plan approuvé (« Approuvé »), avec les deux interprétations signalées : noms dans le code en français sans accents, docstrings en anglais comme les commentaires.
 - 2026-10-11 : la petite pull request qui amène `CLAUDE.md` sur `main` est fusionnée par l'utilisateur lui-même. En voulant l'ouvrir, l'agent principal a découvert qu'elle existait déjà : c'est la #1, ouverte par l'utilisateur. Aucune nouvelle pull request n'a été créée. L'exécuteur ne la fusionne pas. S'il démarre avant cette fusion, il applique la solution de secours de l'étape préalable (copie des commits `1e69881` et `cc598ec`).
+
+- 2026-10-11 : après le briefing du conseiller CTO, trois décisions de l'utilisateur. Les petits changements des points 4 et 5 sont faits maintenant, dans ce ticket (unités 7 et 8), avec les lignes en plus dans `CLAUDE.md` : pas de `--admin`, recette pour `uv.lock`, uv limité à moins de 0.9. Le ruleset de `main` permet de contourner la protection seulement par pull request (`bypass_mode: pull_request`). Seul le squash est autorisé comme méthode de fusion, avec suppression des branches après fusion, réglé en phase 12 après la fusion de la #1.
+- 2026-10-11 : il a été demandé à l'utilisateur de fusionner lui-même la pull request #1 avec « Create a merge commit », comme le recommande le briefing (point 1). Phase 12 gère les trois cas : #1 fusionnée avec un commit de fusion, fusionnée en squash, ou encore ouverte.
 
 ## Review log
 
