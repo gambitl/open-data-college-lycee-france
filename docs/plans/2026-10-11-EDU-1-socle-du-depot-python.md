@@ -280,7 +280,7 @@ Amener `CLAUDE.md` sur `main` (question 1). La petite pull request existe déjà
 
 Si cette pull request n'est pas fusionnée quand l'exécuteur démarre, l'exécuteur applique la solution de secours au début de la phase 6 : il copie les commits `1e69881` et `cc598ec` en tête de cette branche avec `git cherry-pick`, avant le commit du fichier de plan. Dans les deux cas, `CLAUDE.md` est à la racine de la branche avant l'unité 1.
 
-### Unit 1: Projet Python, paquet `pipeline` et premier test de fumée — status: todo
+### Unit 1: Projet Python, paquet `pipeline` et premier test de fumée — status: done
 - Failing test: `tests/test_socle.py::test_importe_pipeline_et_interroge_duckdb`. Il importe `pipeline`, ouvre une connexion DuckDB en mémoire, exécute `select 1` et vérifie que le résultat vaut 1. Il échoue tant que le paquet et `pyproject.toml` n'existent pas.
 - Minimum code:
   - `.gitignore` en premier, avant toute installation, pour que `.venv/` ne soit jamais commité : `data/brut/*`, `!data/brut/README.md`, `.venv/`, `__pycache__/`, `*.py[cod]`, `.pytest_cache/`, `.ruff_cache/`, `.repowise/`, `.DS_Store`, `*.duckdb`, `*.duckdb.wal`.
@@ -293,7 +293,7 @@ Si cette pull request n'est pas fusionnée quand l'exécuteur démarre, l'exécu
 - Commit message: `chore: créer le projet Python géré par uv, avec DuckDB, pytest et ruff`
 - Depends on: l'étape préalable.
 
-### Unit 2: Lanceur de la chaîne et liste `ETAPES` — status: todo
+### Unit 2: Lanceur de la chaîne et liste `ETAPES` — status: done
 - Failing test: dans `tests/test_socle.py`, écrire d'abord ces quatre tests, qui échouent tant que `pipeline/__main__.py` n'existe pas :
   - `test_la_chaine_vide_se_termine_sans_erreur` : lance `python -m pipeline` dans un processus séparé, avec le même interpréteur (`sys.executable`), et vérifie le code de sortie 0.
   - `test_les_etapes_tournent_dans_l_ordre` : appelle `lancer([etape_a, etape_b])` avec deux fausses étapes qui notent leur passage, et vérifie l'ordre.
@@ -306,7 +306,7 @@ Si cette pull request n'est pas fusionnée quand l'exécuteur démarre, l'exécu
 - Commit message: `feat(pipeline): lancer les étapes de la liste ETAPES dans l'ordre`
 - Depends on: unité 1.
 
-### Unit 3: Arborescence, `README.md` des données et limite de taille — status: todo
+### Unit 3: Arborescence, `README.md` des données et limite de taille — status: done
 - Failing test:
   - `tests/test_depot.py::test_l_arborescence_commune_existe` : vérifie que chaque dossier de l'arborescence du ticket existe (`pipeline/collecte`, `pipeline/schemas`, `data/tables`, `data/fictif`, `data/saisies`, `data/brut`, `docs/adr`, `docs/inventaire`, `docs/sources`, `docs/methode`, `tests`) et que chaque dossier de `data/` contient un `README.md`. Dans la CI, qui part d'un clone neuf, ce test prouve aussi que ces fichiers sont bien suivis par git, y compris `data/brut/README.md` malgré le `.gitignore`.
   - `tests/test_depot.py::test_aucun_fichier_suivi_ne_depasse_10_mo` : liste les fichiers suivis avec `git ls-files -z` et échoue si l'un dépasse 10 Mo (10 × 1024 × 1024 octets), avec un message en français qui nomme chaque fichier et sa taille. Il passe d'emblée ; l'implémenteur vérifie une fois à la main qu'il échoue avec un faux fichier de 11 Mo ajouté à l'index, puis le retire sans le commiter.
@@ -317,7 +317,7 @@ Si cette pull request n'est pas fusionnée quand l'exécuteur démarre, l'exécu
 - Commit message: `feat(socle): créer l'arborescence commune et limiter la taille des fichiers suivis`
 - Depends on: unité 1. Indépendante de l'unité 2 (fichiers différents).
 
-### Unit 4: Workflow d'intégration continue — status: todo
+### Unit 4: Workflow d'intégration continue — status: done
 - Failing test: la preuve est l'unité 5, qui fait tourner ce workflow sur GitHub avec un test volontairement faux. En local, l'implémenteur lance les mêmes commandes que le workflow, dans le même ordre, et vérifie qu'elles passent.
 - Minimum code: `.github/workflows/ci.yml`, avec :
   - un nom de workflow (`CI`) ;
@@ -332,7 +332,7 @@ Si cette pull request n'est pas fusionnée quand l'exécuteur démarre, l'exécu
 - Commit message: `ci: lancer ruff et pytest sur chaque push et chaque pull request`
 - Depends on: unités 1, 2 et 3 (le workflow lance leurs tests).
 
-### Unit 5: Preuve que la CI échoue sur un test faux (push anticipé autorisé) — status: todo
+### Unit 5: Preuve que la CI échoue sur un test faux (push anticipé autorisé) — status: done
 - Ce n'est pas une unité de code. C'est la seule exception à la règle « rien n'est poussé avant la phase 12 », autorisée par ce plan parce que le critère d'acceptation exige une exécution réelle de la CI.
 - Étapes, faites par l'exécuteur une fois l'unité 4 commitée :
   1. Créer une branche locale temporaire `edu-1-preuve-ci-rouge` à partir de la branche du ticket.
@@ -343,6 +343,7 @@ Si cette pull request n'est pas fusionnée quand l'exécuteur démarre, l'exécu
   6. Supprimer la branche temporaire sur GitHub (`git push origin --delete edu-1-preuve-ci-rouge`) et en local. Le test faux n'entre jamais dans la branche du ticket.
 - Commit message: aucun sur la branche du ticket, sauf la mise à jour de ce fichier avec le lien.
 - Depends on: unité 4.
+- Résultat : la preuve est faite. Première tentative ratée par ma faute : `assert 1 == 2` est refusé par `ruff check` (règle PLR0133), donc la CI échouait trop tôt. Seconde tentative avec `len("abc") == 4` : `uv sync --locked`, `ruff check` et `ruff format --check` verts, `uv run pytest` rouge. Exécution : https://github.com/gambitl/open-data-college-lycee-france/actions/runs/38143740774. Branche temporaire supprimée sur GitHub et en local.
 
 ### Unit 6: Mise à jour de `CLAUDE.md` — status: todo
 - Failing test: aucun, c'est de la documentation. L'implémenteur vérifie que chaque commande écrite dans `CLAUDE.md` marche telle quelle en local.
