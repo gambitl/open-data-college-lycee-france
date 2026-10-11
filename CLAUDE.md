@@ -4,7 +4,7 @@ Ce dépôt estime la dépense publique par élève de chaque collège et de chaq
 
 ## Où vivent les choses (Where things live)
 
-- **Specs** : dans Notion, sous la page [Open Data Collèges & Lycées](https://app.notion.com/p/3f665f22166b81819f10fa04087336ea). Ces pages Notion sont la seule source de référence. Le dossier `docs/specs/` n'en est qu'une copie.
+- **Specs** : dans Notion, sous la page [Open Data Collèges & Lycées](https://app.notion.com/p/3f665f22166b81819f10fa04087336ea). Ces pages Notion sont la seule source de référence. Le dossier `docs/specs/` ne contient qu'un README qui renvoie vers elles.
 - **Tickets** : dans Linear, équipe « Open Data Education » (clé `EDU`), sous l'initiative « Dépense publique par élève, établissement par établissement ». Chaque projet de la spec a son projet Linear, et chaque jalon de la spec a son jalon Linear.
 - **États** : un nouveau ticket arrive dans l'état « Backlog ».
 - **Titres des tickets** : `P<projet>-J<jalon>-<numéro> : <titre>`, par exemple `P1-J1-3 : Schémas figés des tables livrées au modèle de coût`.
