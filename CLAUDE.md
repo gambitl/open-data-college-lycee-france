@@ -32,6 +32,8 @@ L'organisation suit la spec du projet 1. Tous les tickets partagent cette arbore
 
 - Une étape est une fonction sans argument, en général `executer()` d'un module de `pipeline/collecte/`.
 - Dans `ETAPES`, la première partie contient les collectes, insérées par ordre alphabétique du nom de la source, une par ligne. La seconde partie contient les assemblages de tables, dans l'ordre de leurs dépendances. Les collectes ne dépendent pas les unes des autres.
+- Un module d'aide partagé de `pipeline/collecte/` a un nom qui commence par un tiret bas (`_commun.py`). Il n'a pas de fonction `executer` et n'entre pas dans `ETAPES`.
+- Un module de collecte ne fait rien au moment de son import (pas de téléchargement, pas d'écriture). Tout se passe dans `executer()`.
 - La première erreur arrête la chaîne.
 - Un test échoue si un module de `pipeline/collecte/` n'a pas son `executer` dans `ETAPES`.
 
@@ -44,6 +46,9 @@ L'organisation suit la spec du projet 1. Tous les tickets partagent cette arbore
   - `uv run ruff check`
   - `uv run ruff format --check`
 - Pour réparer ce que ruff signale : `uv run ruff format` et `uv run ruff check --fix`.
+- Ruff garde un seul import par ligne (réglage `force-single-line`). `uv run ruff check --fix` le corrige tout seul.
+- La version de uv attendue est la 0.8 (`pyproject.toml` refuse les autres). La CI utilise exactement la 0.8.5.
+- En cas de conflit sur `uv.lock`, reprenez celui de `main` (`git checkout origin/main -- uv.lock`), puis relancez `uv lock`. Ne supprimez jamais `uv.lock` pour le régénérer : toutes les bibliothèques sauteraient à leur dernière version.
 - Les tests n'utilisent jamais le réseau. Un test qui en a vraiment besoin porte le marqueur `reseau`. Il est sauté par défaut, et se lance avec `uv run pytest -m reseau`.
 - Les tests lisent de petits fichiers d'exemple rangés sous `tests/fixtures/`.
 
@@ -52,6 +57,11 @@ L'organisation suit la spec du projet 1. Tous les tickets partagent cette arbore
 - Le workflow `.github/workflows/ci.yml` tourne sur chaque push et chaque pull request. Son job `verifications` lance `uv sync --locked`, `uv run ruff check`, `uv run ruff format --check` et `uv run pytest`.
 - Le ruleset de `main` exige que le job `verifications` soit vert. Son nom fait partie du contrat et ne doit pas changer. Ajoutez des étapes à ce job plutôt que de créer un nouveau job.
 - Le workflow reste en lecture seule (`contents: read`). Un workflow qui a besoin d'écrire est un fichier à part.
+
+## Fusions
+
+- `main` est protégé par un ruleset. On ne pousse jamais directement sur `main`, et on n'utilise jamais `gh pr merge --admin`.
+- Les pull requests sont fusionnées en squash, qui est la seule méthode autorisée. La branche est supprimée après la fusion.
 
 ## Données
 
