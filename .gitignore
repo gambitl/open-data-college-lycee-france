@@ -1,0 +1,11 @@
+data/brut/*
+!data/brut/README.md
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.repowise/
+.DS_Store
+*.duckdb
+*.duckdb.wal
