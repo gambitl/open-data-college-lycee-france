@@ -345,7 +345,7 @@ Si cette pull request n'est pas fusionnée quand l'exécuteur démarre, l'exécu
 - Depends on: unité 4.
 - Résultat : la preuve est faite. Première tentative ratée par ma faute : `assert 1 == 2` est refusé par `ruff check` (règle PLR0133), donc la CI échouait trop tôt. Seconde tentative avec `len("abc") == 4` : `uv sync --locked`, `ruff check` et `ruff format --check` verts, `uv run pytest` rouge. Exécution : https://github.com/gambitl/open-data-college-lycee-france/actions/runs/38143740774. Branche temporaire supprimée sur GitHub et en local.
 
-### Unit 6: Mise à jour de `CLAUDE.md` — status: todo
+### Unit 6: Mise à jour de `CLAUDE.md` — status: done
 - Failing test: aucun, c'est de la documentation. L'implémenteur vérifie que chaque commande écrite dans `CLAUDE.md` marche telle quelle en local.
 - Minimum code: modifier `CLAUDE.md`, en français, en gardant son style (phrases complètes) :
   - **Langue** : tout ce qui se lit est en français, sauf les commentaires et les docstrings dans le code, qui sont en anglais. Les noms dans le code et les noms de fichiers sont en français, sans accents, en minuscules avec des tirets bas ; les constantes sont en majuscules, comme `ETAPES`.
