@@ -1,5 +1,7 @@
 # Dépense publique par élève, établissement par établissement
 
+**Initiative Linear :** https://linear.app/owlaris/initiative/depense-publique-par-eleve-etablissement-par-etablissement-849f6fdc0c44
+
 Ce dossier contient les spécifications du projet. Le projet estime la dépense publique par élève de chaque collège et de chaque lycée public et privé sous contrat de France, outre-mer compris, pour la rentrée 2024. Il la publie sur un site pensé pour le téléphone, afin de rendre visibles les inégalités de moyens entre établissements.
 
 La question à laquelle le site répond est : « Combien dépense-t-on pour moi, par rapport à la moyenne nationale, à l'académie où l'on dépense le plus et à l'établissement où l'on dépense le plus ? »

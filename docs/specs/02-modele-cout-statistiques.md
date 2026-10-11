@@ -1,5 +1,7 @@
 # Modèle de coût par élève et statistiques
 
+**Projet Linear :** https://linear.app/owlaris/project/modele-de-cout-par-eleve-et-statistiques-ba895d142e37
+
 *Projet 2 sur 4 du projet global « Dépense publique par élève, établissement par établissement ». Les autres specs se trouvent dans le même dossier : [index](README.md).*
 
 ## 1. Contexte et problème

@@ -1,5 +1,7 @@
 # Site interactif : carte, fiche établissement et comparaison
 
+**Projet Linear :** https://linear.app/owlaris/project/site-interactif-carte-fiche-etablissement-et-comparaison-70883a260d9e
+
 *Projet 3 sur 4 du projet global « Dépense publique par élève, établissement par établissement ». Les autres specs se trouvent dans le même dossier : [index](README.md).*
 
 ## 1. Contexte et problème

@@ -1,5 +1,7 @@
 # Inventaire et collecte des données de dépenses
 
+**Projet Linear :** https://linear.app/owlaris/project/inventaire-et-collecte-des-donnees-de-depenses-28172cd5b15f
+
 *Projet 1 sur 4 du projet global « Dépense publique par élève, établissement par établissement ». Les autres specs se trouvent dans le même dossier : [index](README.md).*
 
 ## 1. Contexte et problème

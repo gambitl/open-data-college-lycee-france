@@ -1,5 +1,7 @@
 # Publication et diffusion
 
+**Projet Linear :** https://linear.app/owlaris/project/publication-et-diffusion-456c46f873ac
+
 *Projet 4 sur 4 du projet global « Dépense publique par élève, établissement par établissement ». Les autres specs se trouvent dans le même dossier : [index](README.md).*
 
 ## 1. Contexte et problème
