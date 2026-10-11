@@ -2,6 +2,8 @@
 
 import importlib
 import pkgutil
+import subprocess
+import sys
 
 import duckdb
 import pytest
@@ -20,6 +22,18 @@ def test_la_chaine_vide_se_termine_sans_erreur(capsys):
     # Use an empty list, not the real ETAPES: real steps may use the network.
     lancer([])
     assert "Aucune étape" in capsys.readouterr().out
+
+
+@pytest.mark.skipif(
+    bool(ETAPES),
+    reason="la liste ETAPES n'est plus vide : on ne lance pas les vraies étapes",
+)
+def test_la_commande_python_m_pipeline_se_termine_sans_erreur():
+    # Only meaningful while ETAPES is empty: it must not run real steps.
+    resultat = subprocess.run(
+        [sys.executable, "-m", "pipeline"], check=False, capture_output=True, text=True
+    )
+    assert resultat.returncode == 0, resultat.stderr
 
 
 def test_les_etapes_tournent_dans_l_ordre():
