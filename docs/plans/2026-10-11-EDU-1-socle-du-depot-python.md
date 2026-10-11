@@ -458,3 +458,5 @@ Fixes EDU-1
 - Étape de revue repowise sautée, comme le dit le plan.
 
 ## Hand-off log
+
+- 2026-10-11 : phases 6 à 10 terminées, rapport « done ». Branche locale, rien poussé sauf la branche temporaire de l'unité 5 (supprimée). Reste : rétrospective, puis phase 12 (push, pull request, ruleset de `main`).
