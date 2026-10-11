@@ -412,13 +412,109 @@ Repowise n'est pas utilisé dans ce dépôt (voir « Code mapping »), donc ni s
 
 ### Ce que vous devez savoir sur ce qui a été construit
 
-Le dépôt est maintenant un projet Python qui marche : `uv run pytest`, `uv run ruff check` et `uv run ruff format --check` passent, et `uv run python -m pipeline` se termine sans erreur avec la liste d'étapes vide. Le workflow `ci.yml` n'a jamais encore tourné sur la vraie branche du ticket ; la seule preuve réelle est l'exécution volontairement rouge de la branche temporaire.
+*Conseiller CTO, après la construction, 11 octobre 2026. Ce bloc remplace la note provisoire que l'exécuteur avait écrite en attendant. Une phrase de cette note était fausse, et elle est corrigée au point 1.*
 
-Trois points à garder en tête. Premièrement, le nom du job `verifications` est un contrat : le ruleset de `main` (créé en phase 12) l'exige, et tout ticket qui le renomme bloque toutes les pull requests. Deuxièmement, la liste `ETAPES` suppose que les collectes ne dépendent pas les unes des autres ; si une collecte dépend d'une autre, il faudra revoir cette règle. Troisièmement, le test `test_chaque_module_de_collecte_est_dans_etapes` échoue pour tout module placé dans `pipeline/collecte/`, même un module d'aide ; si une collecte a besoin d'un module commun, il faudra lui donner un autre dossier ou ignorer les noms qui commencent par `_`.
+Le socle marche en local. Les trois commandes de vérification passent, et `uv run python -m pipeline` se termine sans erreur. La CI a déjà prouvé qu'elle passe au rouge sur un test faux. En revanche, elle n'a encore jamais tourné sur la vraie branche du ticket, parce que rien n'est poussé avant la phase 12.
 
-Ce qui reste à faire par d'autres. La pull request #1 (`CLAUDE.md`) n'est pas fusionnée : `CLAUDE.md` est arrivé ici par cherry-pick, donc si elle est fusionnée avant celle-ci, git ignorera les deux commits copiés ; sinon, les deux pull requests touchent le même fichier. EDU-8 doit choisir entre l'heure UTC et l'heure de Paris pour la date des copies. Les deux premières exécutions de la chaîne ne couvrent pas `if __name__ == "__main__"` si la liste `ETAPES` n'est plus vide : le test du sous-processus est alors sauté.
+Le code lui-même est petit et sain. Les risques sont presque tous autour du code : dans quel ordre on fusionne, qui a le droit de contourner les protections, et quelles habitudes les quarante tickets suivants vont copier. Voici les cinq points que je vous demande de regarder, du plus urgent au moins urgent.
 
-Note : le conseiller CTO lancé pour cette section n'a pas répondu ; cette note a été écrite par l'exécuteur à partir du diff et des relectures.
+#### 1. Dans quel ordre fusionne-t-on la pull request #1 et celle de ce ticket, sachant que la vague 1 démarre demain ?
+
+**De quoi il s'agit.** La pull request #1 apporte `CLAUDE.md`, le fichier de conventions. Elle n'est toujours pas fusionnée. L'exécuteur a donc copié ses deux commits dans cette branche (un « cherry-pick » : on recopie un commit d'une branche dans une autre), puis il a enrichi `CLAUDE.md`. Le même fichier existe maintenant dans deux versions différentes, sur deux branches.
+
+**Pourquoi c'est important ici.** J'ai simulé les deux fusions dans une copie jetable du dépôt. Si on fusionne d'abord la #1, puis cette branche par une fusion normale, git produit un conflit sur `CLAUDE.md`. C'est un conflit « ajout contre ajout » : les deux branches créent le même fichier avec un contenu différent. La note provisoire disait que git ignorerait les commits copiés. C'est vrai seulement si on « rebase » cette branche, c'est-à-dire si on rejoue ses commits par-dessus le nouveau `main`. Je l'ai vérifié aussi : dans ce cas, git saute les deux copies et tout s'applique proprement. La même phrase fausse se trouve dans le corps de la pull request, et il faut la corriger.
+
+**Ce qui se passe si on l'ignore.** Deux mauvaises issues sont possibles. Soit les neuf agents de la vague 1 partent demain d'un `main` sans conventions, parce qu'aucune des deux pull requests n'est fusionnée. Soit quelqu'un résout le conflit à la main dans l'interface de GitHub, et garde par erreur l'ancienne version de `CLAUDE.md`, sans les règles ajoutées par ce ticket.
+
+**Ce qui se passe si rien n'est décidé.** La #1 reste ouverte, la pull request de ce ticket s'ouvre en phase 12, et GitHub l'affiche « non fusionnable » dès que la #1 est fusionnée.
+
+**Ma recommandation.** Fusionnez la #1 aujourd'hui, vous-même. Ensuite, l'agent fait `git fetch` puis `git rebase origin/main` sur cette branche avant de la pousser en phase 12. Comme rien n'a encore été poussé, ce rebase ne gêne personne. La solution inverse marche aussi : fermer la #1 sans la fusionner, et fusionner ce ticket avant demain matin. Mais elle dépend de la vitesse de la phase 12, alors que la première ne dépend que de vous. Dans les deux cas, la phrase du corps de la pull request doit dire « si la #1 est fusionnée d'abord, rebaser cette branche ».
+
+#### 2. La protection de `main` doit-elle aussi s'appliquer aux agents, qui travaillent avec votre compte administrateur ?
+
+**De quoi il s'agit.** Le ruleset, c'est-à-dire la règle de protection de `main`, sera créé en phase 12. Il exige une pull request et le job `verifications` en vert. Le plan autorise l'administrateur à contourner la règle « toujours » (`bypass_mode: always`), pour les urgences. Or `gh` est connecté avec le compte `gambitl`, qui est votre compte et qui est administrateur. Tous les agents agissent donc en tant qu'administrateur.
+
+**Pourquoi c'est important ici.** Avec ce réglage, un agent peut pousser directement sur `main`, ou fusionner une pull request rouge avec `gh pr merge --admin`. GitHub affiche alors un simple avertissement, qu'aucun humain ne lit. La protection arrête un humain distrait, mais elle n'arrête pas un agent qui « débloque » une situation. C'est exactement le cas qu'elle devait couvrir.
+
+**Ce qui se passe si on l'ignore.** Un jour, un agent pressé fusionne une pull request rouge pour finir son ticket. Les tickets suivants partent d'un `main` cassé, et personne ne sait d'où vient la panne.
+
+**Ce qui se passe si rien n'est décidé.** Le ruleset est créé tel que le plan le décrit. Il protège contre les accidents, mais pas contre un agent.
+
+**Ma recommandation.** Changez le mode de contournement pour « seulement par pull request » (`bypass_mode: pull_request`). Ainsi, plus personne ne peut pousser directement sur `main`, même vous. Ce mode laisse encore fusionner une pull request rouge avec `--admin`. Ajoutez donc aussi une ligne dans `CLAUDE.md` : « ne jamais utiliser `--admin`, ne jamais pousser sur `main` ». Ce sont deux petits changements, à faire au moment de la création du ruleset. Après la phase 12, ouvrez une fois la page du ruleset sur GitHub, et vérifiez que `verifications` y apparaît bien comme vérification requise.
+
+#### 3. Quelles méthodes de fusion autorise-t-on sur GitHub ?
+
+**De quoi il s'agit.** GitHub propose trois façons de fusionner une pull request. La fusion classique garde tous les commits de la branche. Le « squash » les écrase en un seul commit. Le « rebase » les rejoue un par un. Aujourd'hui, le dépôt autorise les trois, et il ne supprime pas les branches après la fusion.
+
+**Pourquoi c'est important ici.** Le test des 10 Mo (`tests/test_depot.py`) ne regarde que l'état final de la branche. Imaginez qu'un agent commite par erreur un fichier de 40 Mo, puis le supprime dans un second commit. Le test passe, parce que le fichier n'est plus là. Mais avec une fusion classique ou un rebase, les deux commits entrent dans `main`, et le fichier de 40 Mo reste pour toujours dans l'historique public. Seul le squash l'élimine, parce que seul le résultat final entre dans `main`.
+
+**Ce qui se passe si on l'ignore.** Le dépôt grossit sans que personne ne s'en rende compte, et chaque clone devient plus lent. Pour en sortir, il faut réécrire l'historique de `main`, ce qui casse toutes les branches ouvertes à ce moment-là.
+
+**Ce qui se passe si rien n'est décidé.** Chaque agent choisit sa méthode, et l'historique de `main` mélange les trois styles.
+
+**Ma recommandation.** N'autorisez que le squash, et activez la suppression automatique des branches après la fusion. Ce sont deux cases à cocher dans les réglages du dépôt, ou une commande `gh api` que l'agent peut lancer en phase 12. Le squash a un autre avantage : chaque ticket devient un seul commit sur `main`, facile à annuler. Le point 1 reste valable avec le squash : il faut quand même rebaser cette branche avant la fusion.
+
+#### 4. Faut-il obliger tous les agents à utiliser la même version de uv que la CI ?
+
+**De quoi il s'agit.** uv est l'outil qui installe Python et les bibliothèques. Il écrit le fichier de verrouillage `uv.lock`, qui fixe la version exacte de chaque bibliothèque. La CI utilise exactement uv 0.8.5. En local, `pyproject.toml` accepte n'importe quelle version égale ou plus récente (`required-version = ">=0.8.5"`).
+
+**Pourquoi c'est important ici.** Un agent qui a une version plus récente de uv peut réécrire `uv.lock` un peu différemment quand il ajoute une dépendance. La CI, restée en 0.8.5, lance `uv sync --locked`. Elle peut alors juger le fichier « pas à jour », ou même refuser de le lire s'il utilise un format plus récent. Je ne peux pas promettre que cela arrivera. uv change souvent, et c'est le genre de panne qu'un spécialiste de uv surveille.
+
+**Ce qui se passe si on l'ignore.** Une CI rouge, avec un message qui parle du fichier de verrouillage alors que le code est correct. L'agent risque alors de « réparer » en régénérant `uv.lock`, ce qui peut changer d'autres versions de bibliothèques sans raison.
+
+**Ce qui se passe si rien n'est décidé.** Ça marche tant que tout le monde reste en uv 0.8.x. Le jour où un agent est en 0.9, le premier ticket qui ajoute une dépendance risque de tomber dessus.
+
+**Ma recommandation.** Mettez `required-version = ">=0.8.5,<0.9"` dans `pyproject.toml`. Un agent avec une version trop récente reçoit alors tout de suite un message clair en local, au lieu d'une CI rouge et obscure. Le jour où l'on veut passer à uv 0.9, un seul ticket change à la fois cette ligne et la version fixée dans `ci.yml`. C'est une ligne à modifier, sans risque.
+
+#### 5. Que fait un ticket de collecte qui a besoin d'un module d'aide partagé ?
+
+**De quoi il s'agit.** Le test `test_chaque_module_de_collecte_est_dans_etapes` ouvre chaque fichier de `pipeline/collecte/`. Il exige que chacun ait une fonction `executer` présente dans la liste `ETAPES`. C'est ce qui attrape une collecte oubliée dans la liste. C'est un compromis qui a été choisi, et l'exécuteur l'a signalé.
+
+**Pourquoi c'est important ici.** Quinze tickets de collecte vont écrire dans ce dossier, beaucoup en parallèle pendant la vague 3. Plusieurs voudront partager du code, par exemple une fonction qui lit un fichier de l'Éducation nationale. Avec la règle actuelle, un fichier d'aide comme `pipeline/collecte/commun.py` fait échouer le test. Deux autres effets sont à connaître. D'abord, le test importe chaque module, donc un module qui télécharge quelque chose dès son import lance un téléchargement pendant les tests. Ensuite, le test qui lance la vraie commande `python -m pipeline` est sauté dès que `ETAPES` n'est plus vide. C'était voulu, pour ne pas lancer les vraies collectes pendant les tests. Entre la première collecte et EDU-17, aucun test ne lance donc la chaîne complète.
+
+**Ce qui se passe si on l'ignore.** Le premier agent qui veut un module d'aide invente un contournement, par exemple une fausse fonction `executer` ajoutée à `ETAPES`. Les quatorze suivants copient ce contournement.
+
+**Ce qui se passe si rien n'est décidé.** Chaque agent bricole sa propre solution au moment où il tombe sur le problème.
+
+**Ma recommandation.** Décidez-le maintenant, en une ligne de test et une ligne dans `CLAUDE.md` : le test ignore les modules dont le nom commence par un tiret bas, comme `_commun.py`. C'est la convention habituelle de Python pour dire « usage interne ». Ajoutez aussi dans `CLAUDE.md` qu'un module de collecte ne fait rien au moment de son import. Ce petit changement peut se faire dans ce ticket, avant la phase 12, ou dans un ticket à part avant la vague 3.
+
+### Ce que sont devenues les questions d'avant le plan
+
+1. **`CLAUDE.md` sur `main`.** Résolue seulement à moitié. La solution de secours a été appliquée, parce que la pull request #1 n'était pas fusionnée. `main` n'a donc toujours pas de conventions, et il y a un conflit à éviter (point 1).
+2. **Langue et nommage.** Résolue. La règle est écrite dans `CLAUDE.md` et dans l'ADR-INFRA-A, et le code la suit.
+3. **Ruff.** Résolue. Les règles sont dans `pyproject.toml`, et la CI lance `ruff check` et `ruff format --check`.
+4. **Protection de `main`.** Préparée, mais pas encore en place. Le job s'appelle `verifications`, et le fichier `ci.yml` et `CLAUDE.md` disent que ce nom fait partie du contrat. Le ruleset sera créé en phase 12 : voir le point 2 pour le mode de contournement.
+5. **La liste `ETAPES`.** Résolue. La liste a deux parties commentées, la première erreur arrête la chaîne, et un test attrape une collecte oubliée. Voir le point 5 pour les modules d'aide.
+6. **Réseau dans les tests.** Résolue. Le marqueur `reseau` existe, il est sauté par défaut, et `CLAUDE.md` l'explique.
+7. **Déterminisme des données.** Écrite, mais pas vérifiée automatiquement. Les règles sont dans `CLAUDE.md`, mais rien ne les contrôle avant le test de reproduction d'EDU-17. Il n'y a pas encore de table, donc rien ne peut encore casser.
+8. **Gros fichiers.** Résolue pour l'état final de chaque branche, grâce à `tests/test_depot.py` et au `.gitignore`. Elle n'est pas encore résolue pour l'historique : voir le point 3.
+
+### À regarder dans les premiers jours
+
+- La première exécution de la CI sur la vraie branche, en phase 12. C'est la première fois que le job tourne sur ce contenu exact, avec le test en sous-processus ajouté après la preuve rouge.
+- Demain matin, avant le départ de la vague 1, vérifier que `CLAUDE.md` est bien sur `main`.
+- Si une pull request reste bloquée « en attente » sans jamais passer au vert, posez cette question à l'équipe : « Est-ce que quelqu'un a renommé ou coupé le job `verifications` ? »
+- Si la CI passe au rouge sur `uv sync --locked` alors que le code n'a pas changé, posez cette question : « Quelle version de uv as-tu en local ? »
+
+### À savoir aussi
+
+- Mettre à jour DuckDB (par `uv lock --upgrade`) peut changer les octets des tables publiées, par exemple la façon d'écrire les nombres. Une mise à jour de DuckDB doit donc être traitée comme un changement de données, dans son propre ticket.
+- Les actions GitHub sont figées par hash et ne se mettent jamais à jour toutes seules. GitHub retire de temps en temps d'anciennes versions de Node.js, et une action figée trop vieille finit par afficher des avertissements, puis par casser. Activer Dependabot pour les actions règle le problème.
+- La règle « fins de ligne Unix » n'est écrite que dans `CLAUDE.md`. Un fichier `.gitattributes` avec `* text=auto eol=lf` la ferait appliquer par git. Ce n'est pas urgent tant que tout le monde travaille sur Mac ou sur Linux.
+- Ajouter `.env` au `.gitignore` le jour où un ticket utilisera un secret, comme l'a suggéré le relecteur de sécurité.
+- EDU-8 doit toujours choisir entre l'heure UTC et l'heure de Paris pour dater les copies brutes.
+
+### Comment chaque angle a été utilisé
+
+- Sécurité et autorisations : point 2.
+- Verrouillage du modèle de données : pas de nouvel enjeu stratégique, angle sauté. L'arborescence est fixée par le ticket.
+- Volume et performance : point 3, pour la taille de l'historique.
+- Pannes et retour en arrière : points 1, 3 et 4.
+- Cas limites pour l'utilisateur : pas d'écran, angle sauté.
+- Exploitation et coût : dépôt public, minutes de CI gratuites. Seule la maintenance des actions figées compte (« À savoir aussi »).
+- Réversibilité : point 3.
+- Couplages cachés : points 1 (deux versions de `CLAUDE.md`) et 5 (le test des collectes).
+- Angles ajoutés pour cette technologie : les fusions git et le cherry-pick (point 1), les rulesets de GitHub (point 2), les méthodes de fusion de GitHub (point 3), les versions de uv et de son fichier de verrouillage (point 4), les conventions de nommage et d'import en Python (point 5), les versions de DuckDB (« À savoir aussi »).
 
 ## Pull request
 
@@ -434,7 +530,7 @@ Fichiers : `pyproject.toml`, `uv.lock`, `.python-version`, `.gitignore`, `pipeli
 
 Preuve que la CI échoue sur un test faux : https://github.com/gambitl/open-data-college-lycee-france/actions/runs/38143740774 (branche temporaire, supprimée).
 
-Cette pull request contient deux commits copiés de la pull request #1 (`CLAUDE.md`), qui n'était pas fusionnée. Si la #1 est fusionnée d'abord, git les ignorera à la fusion.
+Cette pull request contient deux commits copiés de la pull request #1 (`CLAUDE.md`), qui n'était pas fusionnée. Si la #1 est fusionnée d'abord, il faut rebaser cette branche sur le nouveau `main` : git saute alors les deux copies. Une fusion normale produirait un conflit sur `CLAUDE.md`.
 
 Jugements : `lancer` ne gère que des fonctions simples ; un module d'aide dans `pipeline/collecte/` ferait échouer le test des étapes. Suivis : ajouter `.env` à `.gitignore` quand un secret apparaîtra ; Dependabot.
 
