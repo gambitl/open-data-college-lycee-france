@@ -6,7 +6,7 @@ Tracker: Linear (équipe « Open Data Education », clé `EDU`), par le serveur 
 Documentation tool: Notion pour les specs (page « Open Data Collèges & Lycées »), ADRs in `docs/adr/` dans le dépôt
 Branch: `emdash/edu-1-p1-j1-1-uet1x` (voir « Choix par défaut » plus bas ; Linear propose `victordistefano2/edu-1-p1-j1-1-socle-du-depot-python-uv-pytest-ruff-integration`)
 Conventions file: `CLAUDE.md` à la racine du dépôt. Il n'est pas encore sur `main` : voir la question 1 et l'étape préalable plus bas.
-Status: in progress
+Status: ready for review
 
 **Règle de langue de ce fichier et de tout le ticket** (décision de l'utilisateur, question 2) : tout est écrit en français, sauf les commentaires et les docstrings dans le code, qui sont en anglais. Les titres de section de ce fichier (`## Implementation units`, `## Review log`, `## Executor notes`, etc.) et les valeurs de la ligne `Status:` restent en anglais, parce que les agents de la compétence resolve-issue les cherchent sous ces noms exacts. Le texte sous ces titres est en français.
 
@@ -358,7 +358,7 @@ Si cette pull request n'est pas fusionnée quand l'exécuteur démarre, l'exécu
 - Commit message: `docs: compléter CLAUDE.md avec l'arborescence, les commandes et les règles communes`
 - Depends on: unités 1 à 4 (les commandes doivent exister).
 
-### Unit 7: Imports sur une ligne, modules d'aide de collecte et version de uv — status: todo
+### Unit 7: Imports sur une ligne, modules d'aide de collecte et version de uv — status: done
 - Ajoutée le 11 octobre 2026, après le briefing du conseiller CTO (points 4 et 5), sur décision de l'utilisateur (voir « Decisions »).
 - Failing test: dans `tests/test_socle.py`, sortir la logique du test `test_chaque_module_de_collecte_est_dans_etapes` dans une petite fonction de test qui reçoit une liste de noms de modules et la liste des étapes, et qui renvoie les modules absents. Écrire d'abord un test qui lui donne `["_commun", "annuaire"]` avec une liste d'étapes qui ne contient que `annuaire.executer` (une fausse fonction suffit), et qui attend une liste vide. Il échoue tant que les noms qui commencent par un tiret bas ne sont pas ignorés. Un second test vérifie qu'un module sans tiret bas absent des étapes est toujours signalé.
 - Minimum code:
@@ -370,7 +370,7 @@ Si cette pull request n'est pas fusionnée quand l'exécuteur démarre, l'exécu
 - Commit message: `test: ignorer les modules d'aide de collecte et garder un import par ligne`
 - Depends on: unités 1 à 6.
 
-### Unit 8: Nouvelles règles dans `CLAUDE.md` — status: todo
+### Unit 8: Nouvelles règles dans `CLAUDE.md` — status: done
 - Ajoutée le 11 octobre 2026, avec l'unité 7.
 - Failing test: aucun, c'est de la documentation. Vérifier que chaque commande écrite marche telle quelle.
 - Minimum code: ajouter dans `CLAUDE.md`, en français et dans son style :
@@ -449,6 +449,11 @@ Repowise n'est pas utilisé dans ce dépôt (voir « Code mapping »), donc ni s
 - Jugements à mettre dans la pull request : `lancer` affiche `etape.__module__` et `etape.__name__`, ce qui ne marche que pour des fonctions simples (pas `functools.partial`) ; le test des modules de collecte refuse aussi un futur module d'aide.
 - Suivis : dossier d'aide dans `pipeline/collecte/` ; `.env` dans `.gitignore` ; Dependabot (voir « À savoir aussi »).
 - Branche à jour : `origin/main` n'a pas bougé (5d7b4c3), pas de rebase.
+
+- Unités 7 et 8 : relecteur de conventions et relecteur de justesse sur le diff après `58a8d74`. 
+  - Conventions : aucun problème. Remarque basse : l'aide `modules_absents` vit dans le fichier de test, ce que le plan demande.
+  - Justesse : aucun bug. Une phrase de `CLAUDE.md` laissait croire que toute 0.8 marche ; corrigée (« à partir de la 0.8.5 »). Le contrôle manuel de `force-single-line` a été fait (règle I001 signalée).
+  - Après les corrections : 10 tests passent, `ruff check` et `ruff format --check` verts, `uv lock --check` vert.
 
 ## Briefing
 
@@ -574,16 +579,18 @@ Fichiers : `pyproject.toml`, `uv.lock`, `.python-version`, `.gitignore`, `pipeli
 
 Preuve que la CI échoue sur un test faux : https://github.com/gambitl/open-data-college-lycee-france/actions/runs/38143740774 (branche temporaire, supprimée).
 
-Cette pull request contient deux commits copiés de la pull request #1 (`CLAUDE.md`), qui n'était pas fusionnée. Si la #1 est fusionnée d'abord, il faut rebaser cette branche sur le nouveau `main` : git saute alors les deux copies. Une fusion normale produirait un conflit sur `CLAUDE.md`.
+Cette pull request contient deux commits copiés de la pull request #1 (`CLAUDE.md`). Si la #1 est fusionnée avant la publication, la branche est rebasée et ne contient plus ces deux commits. Si la #1 est encore ouverte au moment de la publication, cette pull request les contient aussi : il faut alors soit fermer la #1 sans la fusionner, soit la fusionner d'abord avec « Create a merge commit » (jamais en squash), puis rebaser cette branche. Une fusion normale de cette branche sans rebase produirait un conflit sur `CLAUDE.md`.
 
-Jugements : `lancer` ne gère que des fonctions simples ; un module d'aide dans `pipeline/collecte/` ferait échouer le test des étapes. Suivis : ajouter `.env` à `.gitignore` quand un secret apparaîtra ; Dependabot.
+Règles ajoutées après le briefing : ruff garde un import par ligne, un module d'aide de collecte se nomme `_nom.py` et est ignoré par le test des étapes, uv est limité à la série 0.8, et `CLAUDE.md` donne la recette pour `uv.lock`, interdit `--admin` et les push sur `main`, et impose la fusion en squash. Après la publication, le ruleset de `main` (contournement seulement par pull request) et la fusion en squash seule sont réglés avec `gh`.
+
+Jugements : `lancer` ne gère que des fonctions simples. Suivis : ajouter `.env` à `.gitignore` quand un secret apparaîtra ; Dependabot.
 
 Fixes EDU-1
 
 ## Documentation
 
-- Commentaire Linear sur EDU-1, EDU-7, EDU-8 et EDU-9 (écrits le 11 octobre 2026).
-- ADR : `docs/adr/ADR-INFRA-A-socle-du-depot.md` (commitée). Le lien de la pull request y sera ajouté en phase 12.
+- Commentaire Linear sur EDU-1, EDU-7, EDU-8 et EDU-9 (écrits le 11 octobre 2026). Une ligne de plus sur EDU-1 et EDU-8 pour les unités 7 et 8 (même jour).
+- ADR : `docs/adr/ADR-INFRA-A-socle-du-depot.md` (commitée, mise à jour pour les unités 7 et 8 : imports sur une ligne, modules d'aide, uv 0.8, recette `uv.lock`, ruleset par pull request, squash seul). Le lien de la pull request y sera ajouté en phase 12.
 - `CLAUDE.md` : mis à jour (unité 6).
 - Notion : section 7 de la spec du projet 1, phrase ajoutée sur le socle d'EDU-1 (https://app.notion.com/p/3f665f22166b8158bc46f59fd823f825).
 
@@ -596,7 +603,9 @@ Fixes EDU-1
 - Les unités ont été faites directement par l'exécuteur, sans implémenteur à part, car elles sont petites et séquentielles.
 - Les sous-agents (quatre relecteurs, relecteur indépendant, conseiller CTO) ont plusieurs fois fini sans rendre leur rapport avant d'être relancés par un message ; le conseiller CTO n'a jamais répondu, j'ai écrit le briefing moi-même.
 - Étape de revue repowise sautée, comme le dit le plan.
+- Unités 7 et 8 : faites directement par l'exécuteur ; rien n'a trébuché. Le contrôle manuel que ruff refuse deux noms sur une ligne a été fait avec `--isolated` et `force-single-line` (I001 signalé).
 
 ## Hand-off log
 
 - 2026-10-11 : phases 6 à 10 terminées, rapport « done ». Branche locale, rien poussé sauf la branche temporaire de l'unité 5 (supprimée). Reste : rétrospective, puis phase 12 (push, pull request, ruleset de `main`).
+- 2026-10-11 (reprise) : unités 7 et 8 faites, relectures, ADR, commentaires Linear (EDU-1, EDU-8) et brouillon de la pull request mis à jour. Statut « ready for review ». Rien poussé. Reste : rétrospective, puis phase 12.

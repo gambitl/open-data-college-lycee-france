@@ -11,11 +11,11 @@ Cette décision regroupe les choix faits en construisant le socle du dépôt. Pr
 
 **Options.** uv avec un fichier de verrouillage, pip avec un fichier `requirements.txt`, ou poetry.
 
-**Choix.** uv. Le paquet `pipeline` est un vrai paquet installable, construit avec `uv_build` et placé à la racine du dépôt. Python 3.12 est fixé par `.python-version` et `requires-python`. `uv.lock` est commité, et la CI installe avec `uv sync --locked`. La CI utilise la même version de uv que celle qui a écrit le fichier de verrouillage.
+**Choix.** uv. Le paquet `pipeline` est un vrai paquet installable, construit avec `uv_build` et placé à la racine du dépôt. Python 3.12 est fixé par `.python-version` et `requires-python`. `uv.lock` est commité, et la CI installe avec `uv sync --locked`. La CI utilise la même version de uv que celle qui a écrit le fichier de verrouillage, et `pyproject.toml` limite uv à la série 0.8 (`>=0.8.5,<0.9`).
 
 **Raison.** Le fichier de verrouillage donne le même résultat partout, et `--locked` fait échouer la CI si `pyproject.toml` et `uv.lock` ne correspondent plus.
 
-**Conséquences.** Chaque ticket ajoute ses dépendances avec `uv add` et commite `uv.lock`. Deux tickets qui ajoutent des dépendances en parallèle peuvent avoir un conflit sur `uv.lock` : on le résout en relançant `uv lock`.
+**Conséquences.** Un uv plus récent est refusé en local avec un message clair, au lieu de produire un `uv.lock` que la CI jugerait périmé. Chaque ticket ajoute ses dépendances avec `uv add` et commite `uv.lock`. Deux tickets qui ajoutent des dépendances en parallèle peuvent avoir un conflit sur `uv.lock` : la recette est de reprendre le `uv.lock` de `main` (`git checkout origin/main -- uv.lock`), puis de relancer `uv lock`. On ne supprime jamais `uv.lock` pour le régénérer, car toutes les bibliothèques sauteraient à leur dernière version.
 
 ## 2. Règles de ruff
 
@@ -23,9 +23,11 @@ Cette décision regroupe les choix faits en construisant le socle du dépôt. Pr
 
 **Options.** Règles par défaut seules, ou règles par défaut plus quelques familles.
 
-**Choix.** Règles par défaut plus `I` (tri des imports), `B` (erreurs courantes) et `UP` (syntaxe moderne). La CI lance `ruff check` et `ruff format --check`. Ruff est toujours lancé par `uv run`.
+**Choix.** Règles par défaut plus `I` (tri des imports), `B` (erreurs courantes) et `UP` (syntaxe moderne). La CI lance `ruff check` et `ruff format --check`. Ruff garde un seul import par ligne (`force-single-line`). Ruff est toujours lancé par `uv run`.
 
 **Raison.** La version de ruff fixée par `uv.lock` donne le même verdict partout.
+
+**Raison de l'import par ligne.** Par défaut, ruff fusionne deux imports du même paquet sur une seule ligne. Les quinze collectes modifieraient alors toutes la même ligne de `pipeline/__main__.py` et se bloqueraient entre elles.
 
 **Conséquences.** Les commandes de réparation sont `uv run ruff format` et `uv run ruff check --fix`.
 
@@ -35,11 +37,11 @@ Cette décision regroupe les choix faits en construisant le socle du dépôt. Pr
 
 **Options.** Laisser les vérifications comme conseil, ou protéger `main`.
 
-**Choix.** Un ruleset sur `main` exige une pull request et le job `verifications` vert. L'option « à jour avant la fusion » reste désactivée, et l'administrateur peut contourner la règle en urgence.
+**Choix.** Un ruleset sur `main` exige une pull request et le job `verifications` vert. L'option « à jour avant la fusion » reste désactivée, et l'administrateur ne peut contourner la règle que par une pull request (`bypass_mode: pull_request`), jamais en poussant directement. Les pull requests sont fusionnées en squash, seule méthode autorisée, et les branches sont supprimées après la fusion.
 
 **Raison.** Une pull request rouge ne doit pas entrer dans `main`. Exiger la mise à jour obligerait chaque pull request ouverte à relancer ses vérifications après chaque fusion.
 
-**Conséquences.** Le nom du job `verifications` fait partie du contrat. Renommer ou couper ce job bloquerait toutes les pull requests. On ajoute des étapes à ce job.
+**Conséquences.** Le nom du job `verifications` fait partie du contrat. Renommer ou couper ce job bloquerait toutes les pull requests. On ajoute des étapes à ce job. On ne pousse jamais sur `main` et on n'utilise jamais `gh pr merge --admin`. Le squash est la seule méthode autorisée parce que le test des 10 Mo ne voit que l'état final d'une branche : un gros fichier ajouté puis retiré entrerait sinon dans l'historique de `main`.
 
 ## 4. Forme de `ETAPES` et arrêt à la première erreur
 
@@ -51,7 +53,7 @@ Cette décision regroupe les choix faits en construisant le socle du dépôt. Pr
 
 **Raison.** Des insertions à des endroits différents limitent les conflits de fusion, et le test attrape un oubli.
 
-**Conséquences.** Hypothèse acceptée : les collectes ne dépendent pas les unes des autres.
+**Conséquences.** Hypothèse acceptée : les collectes ne dépendent pas les unes des autres. Un module d'aide partagé a un nom qui commence par un tiret bas (`_commun.py`) ; le test l'ignore et il n'entre pas dans `ETAPES`. Un module de collecte ne fait rien au moment de son import : tout se passe dans `executer()`.
 
 ## 5. Tests sans réseau
 

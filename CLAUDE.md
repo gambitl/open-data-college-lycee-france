@@ -47,7 +47,7 @@ L'organisation suit la spec du projet 1. Tous les tickets partagent cette arbore
   - `uv run ruff format --check`
 - Pour réparer ce que ruff signale : `uv run ruff format` et `uv run ruff check --fix`.
 - Ruff garde un seul import par ligne (réglage `force-single-line`). `uv run ruff check --fix` le corrige tout seul.
-- La version de uv attendue est la 0.8 (`pyproject.toml` refuse les autres). La CI utilise exactement la 0.8.5.
+- La version de uv attendue est une 0.8, à partir de la 0.8.5 (`pyproject.toml` refuse les autres). La CI utilise exactement la 0.8.5.
 - En cas de conflit sur `uv.lock`, reprenez celui de `main` (`git checkout origin/main -- uv.lock`), puis relancez `uv lock`. Ne supprimez jamais `uv.lock` pour le régénérer : toutes les bibliothèques sauteraient à leur dernière version.
 - Les tests n'utilisent jamais le réseau. Un test qui en a vraiment besoin porte le marqueur `reseau`. Il est sauté par défaut, et se lance avec `uv run pytest -m reseau`.
 - Les tests lisent de petits fichiers d'exemple rangés sous `tests/fixtures/`.
